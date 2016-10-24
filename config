@@ -1,0 +1,259 @@
+####################################
+## StarCluster Configuration File ##
+####################################
+[global]
+# Configure the default cluster template to use when starting a cluster
+# defaults to 'smallcluster' defined below 
+DEFAULT_TEMPLATE=smallcluster
+# split the config into multiple files
+#INCLUDE=~/.starcluster/aws, ~/.starcluster/keys, ~/.starcluster/vols
+
+#############################################
+## AWS Credentials and Connection Settings ##
+#############################################
+[aws info]
+# This is the AWS credentials section (required).
+# These settings apply to all clusters
+AWS_ACCESS_KEY_ID = <USE_YOUR_KEY_ID>
+AWS_SECRET_ACCESS_KEY = <USE_YOUR_SECRET_ACCESS_KEY>
+AWS_USER_ID= <USERNAME> #praveen
+
+# Uncomment to specify a different Amazon AWS region  (OPTIONAL)
+# (defaults to us-east-1 if not specified)
+# NOTE: AMIs have to be migrated!
+#AWS_REGION_NAME = eu-west-1
+#AWS_REGION_HOST = ec2.eu-west-1.amazonaws.com
+
+###########################
+## Defining EC2 Keypairs ##
+###########################
+# Sections starting with "key" define your keypairs. See "starcluster createkey
+# --help" for instructions on how to create a new keypair. Section name should
+# match your key name e.g.:
+[key sc_key]
+KEY_LOCATION= ~/.ssh/sc_key.rsa
+
+################################
+## Defining Cluster Templates ##
+################################
+# Sections starting with "cluster" represent a cluster template. These
+# "templates" are a collection of settings that define a single cluster
+# configuration and are used when creating and configuring a cluster. You can
+# change which template to use when creating your cluster using the -c option
+# to the start command:
+#
+#     $ starcluster start -c mediumcluster mycluster
+#
+# If a template is not specified then the template defined by DEFAULT_TEMPLATE
+# in the [global] section above is used. Below is the "default" template named
+# "smallcluster". You can rename it but dont forget to update the
+# DEFAULT_TEMPLATE setting in the [global] section above. See the next section
+# on defining multiple templates.
+
+[cluster smallcluster]
+KEYNAME = sc_key
+# number of ec2 instances to launch
+CLUSTER_SIZE = 2
+# create the following user on the cluster
+CLUSTER_USER = sgeadmin
+# optionally specify shell (defaults to bash)
+# (options: tcsh, zsh, csh, bash, ksh)
+CLUSTER_SHELL = bash
+# Prepend the cluster tag to the dns name of all nodes created
+# using this cluster config.  ie: mycluster-master and mycluster-node001
+DNS_PREFIX = True
+
+# AMI to use for cluster nodes. These AMIs are for the us-east-1 region.
+# Use the 'listpublic' command to list StarCluster AMIs in other regions
+# The base x86_64 StarCluster AMI is ami-3393a45a
+NODE_IMAGE_ID = ami-3393a45a
+# instance type for all cluster nodes
+NODE_INSTANCE_TYPE = t1.micro 
+
+# Disable installing/configuring a queueing system on the cluster (SGE) 
+# We don't need SGE for setting up a Hadoop Cluster 
+DISABLE_QUEUE=True
+
+# Launch cluster in a VPC subnet (OPTIONAL)
+#SUBNET_ID=subnet-99999999
+# Uncomment to assign public IPs to cluster nodes (VPC-ONLY) (OPTIONAL)
+# WARNING: Using public IPs with a VPC requires:
+# 1. An internet gateway attached to the VPC
+# 2. A route table entry linked to the VPC's internet gateway and associated
+#    with the VPC subnet with a destination CIDR block of 0.0.0.0/0
+# WARNING: Public IPs allow direct access to your VPC nodes from the internet
+#PUBLIC_IPS=True
+
+# Uncomment to specify a different instance type for the master node (OPTIONAL)
+# (defaults to NODE_INSTANCE_TYPE if not specified)
+#MASTER_INSTANCE_TYPE = m1.small
+# Uncomment to specify a separate AMI to use for the master node. (OPTIONAL)
+# (defaults to NODE_IMAGE_ID if not specified)
+#MASTER_IMAGE_ID = ami-3393a45a (OPTIONAL)
+
+# list of plugins to load after StarCluster's default setup routines (OPTIONAL)
+# see "Configuring StarCluster Plugins" below on how to define plugin sections
+#PLUGINS = myplugin, myplugin2
+# list of permissions (or firewall rules) to apply to the cluster's security
+# group (OPTIONAL).
+#PERMISSIONS = ssh, http
+
+# Uncomment to always create a spot cluster when creating a new cluster from
+# this template. The following example will place a $0.50 bid for each spot
+# request.
+#SPOT_BID = 0.50
+
+###########################################
+## Defining Additional Cluster Templates ##
+###########################################
+
+[cluster hadoopcluster]
+# Declares that this cluster uses smallcluster as defaults
+EXTENDS=smallcluster
+PLUGINS = hadoop
+CLUSTER_SIZE=2
+CLUSTER_USER = opraveen 
+# USERDATA_SCRIPTS = /Users/iOP/UCSD/PivotTracing/env_pt_hadoop_ami.sh  #/path/to/script1, /path/to/script2
+
+[cluster pt_hadoopcluster]
+# Declares that this cluster uses smallcluster as defaults
+EXTENDS=smallcluster
+NODE_INSTANCE_TYPE = t2.micro
+NODE_IMAGE_ID = ami-02f6a115 # Based off Ubuntu 16.04, PT_Hadoop installed without 'sudo -s' 
+PLUGINS = pt_hadoop
+CLUSTER_SIZE=1
+CLUSTER_USER = ubuntu #opraveen
+
+# [cluster mediumcluster]
+# Declares that this cluster uses smallcluster as defaults
+# EXTENDS=smallcluster
+# This section is the same as smallcluster except for the following settings:
+# KEYNAME=myotherkey
+# NODE_INSTANCE_TYPE = c1.xlarge
+# CLUSTER_SIZE=8
+# VOLUMES = biodata2
+
+# [cluster largecluster]
+# Declares that this cluster uses mediumcluster as defaults
+# EXTENDS=mediumcluster
+# This section is the same as mediumcluster except for the following variables:
+# CLUSTER_SIZE=16
+
+############################################
+## Configuring Security Group Permissions ##
+############################################
+# Sections starting with "permission" define security group rules to
+# automatically apply to newly created clusters. IP_PROTOCOL in the following
+# examples can be can be: tcp, udp, or icmp. CIDR_IP defaults to 0.0.0.0/0 or
+# "open to the # world"
+
+# open port 80 on the cluster to the world
+# [permission http]
+# IP_PROTOCOL = tcp
+# FROM_PORT = 80
+# TO_PORT = 80
+
+# open https on the cluster to the world
+# [permission https]
+# IP_PROTOCOL = tcp
+# FROM_PORT = 443
+# TO_PORT = 443
+
+# open port 80 on the cluster to an ip range using CIDR_IP
+# [permission http]
+# IP_PROTOCOL = tcp
+# FROM_PORT = 80
+# TO_PORT = 80
+# CIDR_IP = 18.0.0.0/8
+
+# restrict ssh access to a single ip address (<your_ip>)
+# [permission ssh]
+# IP_PROTOCOL = tcp
+# FROM_PORT = 22
+# TO_PORT = 22
+# CIDR_IP = <your_ip>/32
+
+
+#####################################
+## Configuring StarCluster Plugins ##
+#####################################
+# Sections starting with "plugin" define a custom python class which perform
+# additional configurations to StarCluster's default routines. These plugins
+# can be assigned to a cluster template to customize the setup procedure when
+# starting a cluster from this template (see the commented PLUGINS setting in
+# the 'smallcluster' template above). Below is an example of defining a user
+# plugin called 'myplugin':
+
+# [plugin myplugin]
+# NOTE: myplugin module must either live in ~/.starcluster/plugins or be
+# on your PYTHONPATH
+# SETUP_CLASS = myplugin.SetupClass
+# extra settings are passed as __init__ arguments to your plugin:
+# SOME_PARAM_FOR_MY_PLUGIN = 1
+# SOME_OTHER_PARAM = 2
+
+######################
+## Built-in Plugins ##
+######################
+# The following plugins ship with StarCluster and should work out-of-the-box.
+# Uncomment as needed. Don't forget to update your PLUGINS list!
+# See http://star.mit.edu/cluster/docs/latest/plugins for plugin details.
+#
+# Configure a hadoop cluster. (includes dumbo setup)
+[plugin hadoop]
+SETUP_CLASS = starcluster.plugins.hadoop.Hadoop
+
+[plugin pt_hadoop]
+SETUP_CLASS = starcluster.plugins.pt_hadoop.PT_Hadoop
+
+# Use this plugin to install one or more packages on all nodes
+# [plugin pkginstaller]
+# SETUP_CLASS = starcluster.plugins.pkginstaller.PackageInstaller
+# # list of apt-get installable packages
+# PACKAGES = mongodb, python-pymongo
+#
+# The SGE plugin is enabled by default and not strictly required. Only use this
+# if you want to tweak advanced settings in which case you should also set
+# DISABLE_QUEUE=TRUE in your cluster template. See the plugin doc for more
+# details.
+# [plugin sge]
+# SETUP_CLASS = starcluster.plugins.sge.SGEPlugin
+# MASTER_IS_EXEC_HOST = False
+#
+# The IPCluster plugin configures a parallel IPython cluster with optional
+# web notebook support. This allows you to run Python code in parallel with low
+# latency message passing via ZeroMQ.
+# [plugin ipcluster]
+# SETUP_CLASS = starcluster.plugins.ipcluster.IPCluster
+# # Enable the IPython notebook server (optional)
+# ENABLE_NOTEBOOK = True
+# # Set a password for the notebook for increased security
+# # This is optional but *highly* recommended
+# NOTEBOOK_PASSWD = a-secret-password
+# # Set a custom directory for storing/loading notebooks (optional)
+# NOTEBOOK_DIRECTORY = /path/to/notebook/dir
+# # Set a custom packer. Must be one of 'json', 'pickle', or 'msgpack'
+# # This is optional.
+# PACKER = pickle
+
+# Use this plugin to create a cluster SSH "dashboard" using tmux. The plugin
+# creates a tmux session on the master node that automatically connects to all
+# the worker nodes over SSH. Attaching to the session shows a separate window
+# for each node and each window is logged into the node via SSH.
+[plugin tmux]
+SETUP_CLASS = starcluster.plugins.tmux.TmuxControlCenter
+
+# Configure a distributed MySQL Cluster
+# [plugin mysqlcluster]
+# SETUP_CLASS = starcluster.plugins.mysql.MysqlCluster
+# NUM_REPLICAS = 2
+# DATA_MEMORY = 80M
+# INDEX_MEMORY = 18M
+# DUMP_FILE = test.sql
+# DUMP_INTERVAL = 60
+# DEDICATED_QUERY = True
+# NUM_DATA_NODES = 2
+#
+# Install and setup an Xvfb server on each cluster node
+# [plugin xvfb]
+# SETUP_CLASS = starcluster.plugins.xvfb.XvfbSetup
